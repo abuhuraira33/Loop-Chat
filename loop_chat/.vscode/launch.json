@@ -1,0 +1,7 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    { "name": "Loop Chat", "request": "launch", "type": "dart", "program": "lib/main.dart" },
+    { "name": "Loop Chat (Chrome)", "request": "launch", "type": "dart", "program": "lib/main.dart", "deviceId": "chrome" }
+  ]
+}
