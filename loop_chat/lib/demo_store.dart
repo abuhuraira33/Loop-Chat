@@ -60,24 +60,24 @@ class DemoStore extends ChangeNotifier {
   void _seed() {
     contacts.addAll([
       Contact(
-        id: 'ahad',
-        name: 'Abdul Ahad',
+        id: 'talha',
+        name: 'Talha Sohail',
         bio: 'Building something good.',
         color: const Color(0xFFCFE5DE),
         online: true,
         favorite: true,
       ),
       Contact(
-        id: 'sara',
-        name: 'Sara Khan',
-        bio: 'Design, coffee, repeat.',
+        id: 'Amna',
+        name: 'Amna',
+        bio: 'Chill',
         color: const Color(0xFFE8DDCF),
         online: true,
         favorite: true,
       ),
       Contact(
         id: 'hamza',
-        name: 'Hamza Ali',
+        name: 'Hamza ',
         bio: 'Always up for a match.',
         color: const Color(0xFFD9DEF0),
       ),
@@ -103,8 +103,7 @@ class DemoStore extends ChangeNotifier {
     ]);
     final lines = [
       [
-        'Hey! How is the new project going?',
-        'Pretty well! Keeping the first version simple.',
+        'Hey! How is the new project going?'
         'Nice. Let’s catch up after class.',
       ],
       [
