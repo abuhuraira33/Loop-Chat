@@ -1,11 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../demo_store.dart';
 import '../widgets/shared.dart';
 
 class ChatScreen extends StatefulWidget {
-  const ChatScreen({super.key, required this.store, required this.contact});
+  const ChatScreen({
+    super.key,
+    required this.store,
+    required this.contact,
+    this.isEmbedded = false,
+  });
+
   final DemoStore store;
   final Contact contact;
+  final bool isEmbedded;
+
   @override
   State<ChatScreen> createState() => _ChatScreenState();
 }
@@ -14,19 +23,30 @@ class _ChatScreenState extends State<ChatScreen> {
   final _input = TextEditingController();
   final _scroll = ScrollController();
   final _focus = FocusNode();
+  final _searchController = TextEditingController();
+
+  bool _isSearching = false;
+  String _searchQuery = '';
 
   @override
   void dispose() {
     _input.dispose();
     _scroll.dispose();
     _focus.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
   void _send() {
     if (_input.text.trim().isEmpty) return;
+    HapticFeedback.lightImpact();
     widget.store.send(widget.contact, _input.text);
     _input.clear();
+    _scrollToBottom();
+    _focus.requestFocus();
+  }
+
+  void _scrollToBottom() {
     if (_scroll.hasClients) {
       _scroll.animateTo(
         0,
@@ -34,7 +54,50 @@ class _ChatScreenState extends State<ChatScreen> {
         curve: Curves.easeOut,
       );
     }
-    _focus.requestFocus();
+  }
+
+  void _showMessageOptions(Message message) {
+    HapticFeedback.lightImpact();
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.copy_rounded),
+              title: const Text('Copy message'),
+              onTap: () {
+                Navigator.pop(context);
+                Clipboard.setData(ClipboardData(text: message.text));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Message copied to clipboard'),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(
+                Icons.delete_outline_rounded,
+                color: Colors.red,
+              ),
+              title: const Text(
+                'Delete message',
+                style: TextStyle(color: Colors.red),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                HapticFeedback.lightImpact();
+                widget.store.deleteMessage(widget.contact, message.id);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _clear() async {
@@ -102,50 +165,88 @@ class _ChatScreenState extends State<ChatScreen> {
     builder: (context, _) {
       final c = widget.contact;
       final colors = Theme.of(context).colorScheme;
-      final messages = c.messages.reversed.toList();
+      var messages = c.messages.reversed.toList();
+      if (_searchQuery.trim().isNotEmpty) {
+        messages = messages
+            .where(
+              (m) => m.text.toLowerCase().contains(_searchQuery.toLowerCase()),
+            )
+            .toList();
+      }
       final typing = widget.store.isTyping(c);
       return Scaffold(
         appBar: AppBar(
-          titleSpacing: 0,
-          title: InkWell(
-            onTap: _info,
-            borderRadius: BorderRadius.circular(16),
-            child: Row(
-              children: [
-                PersonAvatar(
-                  name: c.name,
-                  color: c.color,
-                  online: c.online,
-                  radius: 20,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+          automaticallyImplyLeading: !widget.isEmbedded,
+          titleSpacing: widget.isEmbedded ? 16 : 0,
+          title: _isSearching
+              ? TextField(
+                  controller: _searchController,
+                  autofocus: true,
+                  onChanged: (val) => setState(() => _searchQuery = val),
+                  decoration: InputDecoration(
+                    hintText: 'Search in conversation…',
+                    border: InputBorder.none,
+                    filled: false,
+                    suffixIcon: IconButton(
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () {
+                        setState(() {
+                          _isSearching = false;
+                          _searchQuery = '';
+                          _searchController.clear();
+                        });
+                      },
+                    ),
+                  ),
+                )
+              : InkWell(
+                  onTap: _info,
+                  borderRadius: BorderRadius.circular(16),
+                  child: Row(
                     children: [
-                      Text(
-                        c.name,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 16,
-                        ),
+                      PersonAvatar(
+                        name: c.name,
+                        color: c.color,
+                        online: c.online,
+                        radius: 20,
                       ),
-                      Text(
-                        typing
-                            ? 'Typing a demo reply…'
-                            : c.online
-                            ? 'Online in demo'
-                            : 'Sample contact',
-                        style: TextStyle(fontSize: 11, color: colors.primary),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              c.name,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 16,
+                              ),
+                            ),
+                            Text(
+                              typing
+                                  ? 'Typing a demo reply…'
+                                  : c.online
+                                  ? 'Online in demo'
+                                  : 'Sample contact',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: colors.primary,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
                 ),
-              ],
-            ),
-          ),
           actions: [
+            if (!_isSearching)
+              IconButton(
+                tooltip: 'Search in chat',
+                icon: const Icon(Icons.search_rounded),
+                onPressed: () => setState(() => _isSearching = true),
+              ),
             PopupMenuButton<String>(
               tooltip: 'Conversation options',
               onSelected: (value) {
@@ -196,10 +297,13 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
                 Expanded(
                   child: messages.isEmpty
-                      ? const EmptyState(
-                          title: 'Start a little conversation',
-                          message:
-                              'Say hello. Messages only live in this session.',
+                      ? EmptyState(
+                          title: _searchQuery.isNotEmpty
+                              ? 'No matching messages'
+                              : 'Start a little conversation',
+                          message: _searchQuery.isNotEmpty
+                              ? 'Try searching for something else.'
+                              : 'Say hello. Messages only live in this session.',
                         )
                       : ListView.builder(
                           controller: _scroll,
@@ -210,82 +314,92 @@ class _ChatScreenState extends State<ChatScreen> {
                             final message = messages[index];
                             return Reveal(
                               key: ValueKey(message.id),
-                              child: Align(
-                                alignment: message.mine
-                                    ? Alignment.centerRight
-                                    : Alignment.centerLeft,
-                                child: Container(
-                                  constraints: BoxConstraints(
-                                    maxWidth:
-                                        MediaQuery.sizeOf(context).width < 500
-                                        ? MediaQuery.sizeOf(context).width * .78
-                                        : 500,
-                                  ),
-                                  margin: const EdgeInsets.only(bottom: 12),
-                                  padding: const EdgeInsets.fromLTRB(
-                                    16,
-                                    12,
-                                    14,
-                                    9,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: message.mine
-                                        ? colors.primary
-                                        : colors.surfaceContainerHighest
-                                              .withValues(alpha: .6),
-                                    borderRadius: BorderRadius.only(
-                                      topLeft: const Radius.circular(20),
-                                      topRight: const Radius.circular(20),
-                                      bottomLeft: Radius.circular(
-                                        message.mine ? 20 : 5,
-                                      ),
-                                      bottomRight: Radius.circular(
-                                        message.mine ? 5 : 20,
-                                      ),
+                              child: GestureDetector(
+                                onLongPress: () =>
+                                    _showMessageOptions(message),
+                                child: Align(
+                                  alignment: message.mine
+                                      ? Alignment.centerRight
+                                      : Alignment.centerLeft,
+                                  child: Container(
+                                    constraints: BoxConstraints(
+                                      maxWidth:
+                                          MediaQuery.sizeOf(
+                                            context,
+                                          ).width < 500
+                                              ? MediaQuery.sizeOf(
+                                                    context,
+                                                  ).width *
+                                                  .78
+                                              : 500,
                                     ),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        message.text,
-                                        style: TextStyle(
-                                          fontSize: 15,
-                                          height: 1.45,
-                                          color: message.mine
-                                              ? colors.onPrimary
-                                              : colors.onSurface,
+                                    margin: const EdgeInsets.only(bottom: 12),
+                                    padding: const EdgeInsets.fromLTRB(
+                                      16,
+                                      12,
+                                      14,
+                                      9,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: message.mine
+                                          ? colors.primary
+                                          : colors.surfaceContainerHighest
+                                                .withValues(alpha: .6),
+                                      borderRadius: BorderRadius.only(
+                                        topLeft: const Radius.circular(20),
+                                        topRight: const Radius.circular(20),
+                                        bottomLeft: Radius.circular(
+                                          message.mine ? 20 : 5,
+                                        ),
+                                        bottomRight: Radius.circular(
+                                          message.mine ? 5 : 20,
                                         ),
                                       ),
-                                      const SizedBox(height: 5),
-                                      Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Text(
-                                            timeLabel(message.time),
-                                            style: TextStyle(
-                                              fontSize: 9,
-                                              color:
-                                                  (message.mine
-                                                          ? colors.onPrimary
-                                                          : colors
-                                                                .onSurfaceVariant)
-                                                      .withValues(alpha: .7),
-                                            ),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.end,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          message.text,
+                                          style: TextStyle(
+                                            fontSize: 15,
+                                            height: 1.45,
+                                            color: message.mine
+                                                ? colors.onPrimary
+                                                : colors.onSurface,
                                           ),
-                                          if (message.mine) ...[
-                                            const SizedBox(width: 5),
-                                            Icon(
-                                              Icons.check_rounded,
-                                              size: 12,
-                                              color: colors.onPrimary
-                                                  .withValues(alpha: .7),
+                                        ),
+                                        const SizedBox(height: 5),
+                                        Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              timeLabel(message.time),
+                                              style: TextStyle(
+                                                fontSize: 9,
+                                                color:
+                                                    (message.mine
+                                                            ? colors.onPrimary
+                                                            : colors
+                                                                .onSurfaceVariant)
+                                                        .withValues(alpha: .7),
+                                              ),
                                             ),
+                                            if (message.mine) ...[
+                                              const SizedBox(width: 5),
+                                              Icon(
+                                                Icons.check_rounded,
+                                                size: 12,
+                                                color: colors.onPrimary
+                                                    .withValues(alpha: .7),
+                                              ),
+                                            ],
                                           ],
-                                        ],
-                                      ),
-                                    ],
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),

@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/Loop_Chat_Complete_Project.iml" filepath="$PROJECT_DIR$/.idea/Loop_Chat_Complete_Project.iml" />
+      <module fileurl="file://$PROJECT_DIR$/loop_chat/loop_chat.iml" filepath="$PROJECT_DIR$/loop_chat/loop_chat.iml" />
     </modules>
   </component>
 </project>

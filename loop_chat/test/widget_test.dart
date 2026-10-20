@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:loop_chat/app.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 Future<void> openApp(
   WidgetTester tester, {
@@ -18,6 +19,10 @@ Future<void> openApp(
 }
 
 void main() {
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
   testWidgets('welcome, search, empty search, send and back', (tester) async {
     await openApp(tester);
     await tester.enterText(find.byKey(const Key('search')), 'no such contact');

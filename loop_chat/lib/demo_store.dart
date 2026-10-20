@@ -1,5 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'theme.dart';
 
 class Message {
   Message({
@@ -8,10 +11,25 @@ class Message {
     required this.mine,
     DateTime? time,
   }) : time = time ?? DateTime.now();
+
   final String id;
   final String text;
   final bool mine;
   final DateTime time;
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'text': text,
+    'mine': mine,
+    'time': time.toIso8601String(),
+  };
+
+  factory Message.fromJson(Map<String, dynamic> json) => Message(
+    id: json['id'] as String,
+    text: json['text'] as String,
+    mine: json['mine'] as bool,
+    time: DateTime.tryParse(json['time'] as String? ?? '') ?? DateTime.now(),
+  );
 }
 
 class Contact {
@@ -23,6 +41,7 @@ class Contact {
     this.online = false,
     this.favorite = false,
   });
+
   final String id;
   final String name;
   final String bio;
@@ -33,13 +52,15 @@ class Contact {
   final List<Message> messages = [];
 }
 
-/// All state is in memory. No authentication, storage, sockets, or network calls.
+/// All state managed locally with optional SharedPreferences persistence.
 class DemoStore extends ChangeNotifier {
   DemoStore() {
     _seed();
+    _loadFromPrefs();
   }
 
-  bool darkMode = false;
+  ThemeMode themeMode = ThemeMode.system;
+  AppThemeColor accentColor = AppThemeColor.teal;
   bool simulateReplies = true;
   String name = 'Abu Huraira';
   String bio = 'Keeping good conversations going.';
@@ -47,6 +68,8 @@ class DemoStore extends ChangeNotifier {
   final Map<String, Timer> _replyTimers = {};
   int _sequence = 0;
   String? _activeChat;
+
+  bool get darkMode => themeMode == ThemeMode.dark;
 
   List<Contact> get chats {
     final result = contacts.where((c) => c.messages.isNotEmpty).toList();
@@ -60,8 +83,8 @@ class DemoStore extends ChangeNotifier {
   void _seed() {
     contacts.addAll([
       Contact(
-        id: 'talha',
-        name: 'Talha Sohail',
+        id: 'abdul',
+        name: 'Abdul Ahad',
         bio: 'Building something good.',
         color: const Color(0xFFCFE5DE),
         online: true,
@@ -103,8 +126,9 @@ class DemoStore extends ChangeNotifier {
     ]);
     final lines = [
       [
-        'Hey! How is the new project going?'
+        'Hey! How is the new project going?',
         'Nice. Let’s catch up after class.',
+        'Sounds good! See you then.',
       ],
       [
         'I tried a softer color palette for the screens.',
@@ -140,6 +164,67 @@ class DemoStore extends ChangeNotifier {
     contacts[1].unread = 2;
   }
 
+  Future<void> _loadFromPrefs() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final modeIndex = prefs.getInt('theme_mode');
+      if (modeIndex != null &&
+          modeIndex >= 0 &&
+          modeIndex < ThemeMode.values.length) {
+        themeMode = ThemeMode.values[modeIndex];
+      }
+      final accentIndex = prefs.getInt('accent_color');
+      if (accentIndex != null &&
+          accentIndex >= 0 &&
+          accentIndex < AppThemeColor.values.length) {
+        accentColor = AppThemeColor.values[accentIndex];
+      }
+      simulateReplies = prefs.getBool('simulate_replies') ?? simulateReplies;
+      name = prefs.getString('user_name') ?? name;
+      bio = prefs.getString('user_bio') ?? bio;
+
+      final favorites = prefs.getStringList('favorites');
+      if (favorites != null) {
+        for (final c in contacts) {
+          c.favorite = favorites.contains(c.id);
+        }
+      }
+
+      for (final c in contacts) {
+        final messagesJson = prefs.getString('messages_${c.id}');
+        if (messagesJson != null) {
+          final List<dynamic> decoded = jsonDecode(messagesJson);
+          c.messages.clear();
+          c.messages.addAll(
+            decoded.map(
+              (item) => Message.fromJson(item as Map<String, dynamic>),
+            ),
+          );
+        }
+      }
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  Future<void> _saveToPrefs() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt('theme_mode', themeMode.index);
+      await prefs.setInt('accent_color', accentColor.index);
+      await prefs.setBool('simulate_replies', simulateReplies);
+      await prefs.setString('user_name', name);
+      await prefs.setString('user_bio', bio);
+      await prefs.setStringList(
+        'favorites',
+        contacts.where((c) => c.favorite).map((c) => c.id).toList(),
+      );
+      for (final c in contacts) {
+        final encoded = jsonEncode(c.messages.map((m) => m.toJson()).toList());
+        await prefs.setString('messages_${c.id}', encoded);
+      }
+    } catch (_) {}
+  }
+
   void openChat(Contact contact) {
     _activeChat = contact.id;
     contact.unread = 0;
@@ -158,6 +243,7 @@ class DemoStore extends ChangeNotifier {
     contact.messages.add(
       Message(id: 'local-${_sequence++}', text: text, mine: true),
     );
+    _saveToPrefs();
     if (simulateReplies) {
       _replyTimers.remove(contact.id)?.cancel();
       _replyTimers[contact.id] = Timer(const Duration(milliseconds: 1400), () {
@@ -170,19 +256,38 @@ class DemoStore extends ChangeNotifier {
           ),
         );
         if (_activeChat != contact.id) contact.unread++;
+        _saveToPrefs();
         notifyListeners();
       });
     }
     notifyListeners();
   }
 
+  void deleteMessage(Contact contact, String messageId) {
+    contact.messages.removeWhere((m) => m.id == messageId);
+    _saveToPrefs();
+    notifyListeners();
+  }
+
   void toggleFavorite(Contact contact) {
     contact.favorite = !contact.favorite;
+    _saveToPrefs();
     notifyListeners();
   }
 
   void setDarkMode(bool value) {
-    darkMode = value;
+    setThemeMode(value ? ThemeMode.dark : ThemeMode.light);
+  }
+
+  void setThemeMode(ThemeMode mode) {
+    themeMode = mode;
+    _saveToPrefs();
+    notifyListeners();
+  }
+
+  void setAccentColor(AppThemeColor color) {
+    accentColor = color;
+    _saveToPrefs();
     notifyListeners();
   }
 
@@ -191,12 +296,14 @@ class DemoStore extends ChangeNotifier {
     if (!value) {
       _cancelTimers();
     }
+    _saveToPrefs();
     notifyListeners();
   }
 
   void updateProfile(String newName, String newBio) {
     name = newName.trim().isEmpty ? name : newName.trim();
     bio = newBio.trim();
+    _saveToPrefs();
     notifyListeners();
   }
 
@@ -204,13 +311,22 @@ class DemoStore extends ChangeNotifier {
     _replyTimers.remove(contact.id)?.cancel();
     contact.messages.clear();
     contact.unread = 0;
+    _saveToPrefs();
     notifyListeners();
   }
 
-  void resetDemo() {
+  Future<void> resetDemo() async {
     _cancelTimers();
     contacts.clear();
     _seed();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('favorites');
+      for (final c in contacts) {
+        await prefs.remove('messages_${c.id}');
+      }
+    } catch (_) {}
+    _saveToPrefs();
     notifyListeners();
   }
 

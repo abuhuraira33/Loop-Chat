@@ -25,9 +25,9 @@ class _LoopChatAppState extends State<LoopChatApp> {
     builder: (context, _) => MaterialApp(
       title: 'Loop Chat',
       debugShowCheckedModeBanner: false,
-      theme: LoopTheme.light,
-      darkTheme: LoopTheme.dark,
-      themeMode: store.darkMode ? ThemeMode.dark : ThemeMode.light,
+      theme: LoopTheme.light(store.accentColor),
+      darkTheme: LoopTheme.dark(store.accentColor),
+      themeMode: store.themeMode,
       home: WelcomeScreen(store: store),
     ),
   );

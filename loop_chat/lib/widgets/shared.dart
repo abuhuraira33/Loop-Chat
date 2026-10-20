@@ -9,12 +9,12 @@ class LoopMark extends StatelessWidget {
     width: size,
     height: size,
     decoration: BoxDecoration(
-      color: LoopTheme.teal,
+      color: Theme.of(context).colorScheme.primary,
       borderRadius: BorderRadius.circular(size * .32),
     ),
     child: Icon(
       Icons.all_inclusive_rounded,
-      color: Colors.white,
+      color: Theme.of(context).colorScheme.onPrimary,
       size: size * .65,
     ),
   );
@@ -41,6 +41,7 @@ class PersonAvatar extends StatelessWidget {
         .take(2)
         .map((s) => s[0])
         .join();
+    final primary = Theme.of(context).colorScheme.primary;
     return Stack(
       children: [
         CircleAvatar(
@@ -63,7 +64,7 @@ class PersonAvatar extends StatelessWidget {
               width: 13,
               height: 13,
               decoration: BoxDecoration(
-                color: LoopTheme.teal,
+                color: primary,
                 shape: BoxShape.circle,
                 border: Border.all(
                   color: Theme.of(context).scaffoldBackgroundColor,
@@ -154,5 +155,39 @@ class EmptyState extends StatelessWidget {
   );
 }
 
-String timeLabel(DateTime time) =>
-    '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+String timeLabel(DateTime time) {
+  final now = DateTime.now();
+  final diff = now.difference(time);
+  final clock =
+      '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+
+  if (diff.inSeconds < 60) {
+    return 'Just now';
+  } else if (diff.inMinutes < 60) {
+    return '${diff.inMinutes}m ago';
+  } else if (now.year == time.year &&
+      now.month == time.month &&
+      now.day == time.day) {
+    return clock;
+  } else if (now.year == time.year &&
+      now.month == time.month &&
+      now.day - time.day == 1) {
+    return 'Yesterday $clock';
+  } else {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return '${months[time.month - 1]} ${time.day}, $clock';
+  }
+}

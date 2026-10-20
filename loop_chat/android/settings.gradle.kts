@@ -1,4 +1,6 @@
 
+System.clearProperty("ANDROID_PREFS_ROOT")
+
 pluginManagement {
     val flutterSdkPath =
         run {

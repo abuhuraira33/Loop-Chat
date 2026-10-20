@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../demo_store.dart';
+import '../theme.dart';
 import '../widgets/shared.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -105,7 +107,49 @@ class SettingsScreen extends StatelessWidget {
           title: const Text('Dark appearance'),
           subtitle: const Text('A softer glow after hours.'),
           value: store.darkMode,
-          onChanged: store.setDarkMode,
+          onChanged: (val) {
+            HapticFeedback.lightImpact();
+            store.setDarkMode(val);
+          },
+        ),
+        const Divider(),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'THEME ACCENT',
+                style: TextStyle(
+                  fontSize: 10,
+                  letterSpacing: 1.8,
+                  fontWeight: FontWeight.w700,
+                  color: colors.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final colorOption in AppThemeColor.values)
+                    ChoiceChip(
+                      avatar: CircleAvatar(
+                        backgroundColor: colorOption.color,
+                        radius: 8,
+                      ),
+                      label: Text(colorOption.label),
+                      selected: store.accentColor == colorOption,
+                      onSelected: (_) {
+                        HapticFeedback.lightImpact();
+                        store.setAccentColor(colorOption);
+                      },
+                      showCheckmark: false,
+                    ),
+                ],
+              ),
+            ],
+          ),
         ),
         const Divider(),
         SwitchListTile(
@@ -114,7 +158,10 @@ class SettingsScreen extends StatelessWidget {
           title: const Text('Demo replies'),
           subtitle: const Text('Show an automatic sample reply.'),
           value: store.simulateReplies,
-          onChanged: store.setSimulateReplies,
+          onChanged: (val) {
+            HapticFeedback.lightImpact();
+            store.setSimulateReplies(val);
+          },
         ),
         const Divider(),
         ListTile(
@@ -149,7 +196,7 @@ class SettingsScreen extends StatelessWidget {
               ),
               const SizedBox(height: 14),
               Text(
-                'A simple UI prototype, made for good conversations. All people and messages are sample data. Changes reset when the app restarts.',
+                'A simple UI prototype, made for good conversations. All people and messages are sample data.',
                 style: TextStyle(
                   height: 1.6,
                   fontSize: 12,
@@ -225,6 +272,7 @@ class _ProfileEditorState extends State<_ProfileEditor> {
       FilledButton(
         onPressed: () {
           if (_form.currentState!.validate()) {
+            HapticFeedback.lightImpact();
             Navigator.pop(context, (_name.text, _bio.text));
           }
         },

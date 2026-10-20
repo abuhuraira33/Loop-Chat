@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../demo_store.dart';
 import '../widgets/shared.dart';
 import 'chat_screen.dart';
@@ -7,6 +8,7 @@ import 'settings_screen.dart';
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, required this.store});
   final DemoStore store;
+
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
@@ -16,6 +18,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _filter = 0;
   final _search = TextEditingController();
   String _query = '';
+  Contact? _selectedContact;
 
   @override
   void dispose() {
@@ -30,11 +33,17 @@ class _HomeScreenState extends State<HomeScreen> {
   });
 
   Future<void> _openChat(Contact contact) async {
-    widget.store.openChat(contact);
-    await Navigator.of(
-      context,
-    ).push(loopRoute(ChatScreen(store: widget.store, contact: contact)));
-    widget.store.closeChat(contact);
+    final wide = MediaQuery.sizeOf(context).width >= 760;
+    if (wide) {
+      setState(() => _selectedContact = contact);
+      widget.store.openChat(contact);
+    } else {
+      widget.store.openChat(contact);
+      await Navigator.of(
+        context,
+      ).push(loopRoute(ChatScreen(store: widget.store, contact: contact)));
+      widget.store.closeChat(contact);
+    }
   }
 
   @override
@@ -42,11 +51,15 @@ class _HomeScreenState extends State<HomeScreen> {
     animation: widget.store,
     builder: (context, _) {
       final wide = MediaQuery.sizeOf(context).width >= 760;
+      if (_selectedContact != null &&
+          !widget.store.contacts.contains(_selectedContact)) {
+        _selectedContact = null;
+      }
       return Scaffold(
         body: SafeArea(
           child: Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1080),
+              constraints: BoxConstraints(maxWidth: wide ? 1280 : 1080),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -92,6 +105,32 @@ class _HomeScreenState extends State<HomeScreen> {
                           ? SettingsScreen(
                               key: const ValueKey('settings'),
                               store: widget.store,
+                            )
+                          : wide
+                          ? Row(
+                              children: [
+                                SizedBox(
+                                  width: 380,
+                                  child: _conversationList(context),
+                                ),
+                                const VerticalDivider(width: 1),
+                                Expanded(
+                                  child: _selectedContact != null
+                                      ? ChatScreen(
+                                          key: ValueKey(_selectedContact!.id),
+                                          store: widget.store,
+                                          contact: _selectedContact!,
+                                          isEmbedded: true,
+                                        )
+                                      : const EmptyState(
+                                          title: 'Select a conversation',
+                                          message:
+                                              'Choose a contact from the list to start chatting.',
+                                          icon: Icons
+                                              .chat_bubble_outline_rounded,
+                                        ),
+                                ),
+                              ],
                             )
                           : _conversationList(context),
                     ),
@@ -282,12 +321,15 @@ class _HomeScreenState extends State<HomeScreen> {
                   separatorBuilder: (_, index) => const SizedBox(height: 4),
                   itemBuilder: (context, index) {
                     final contact = contacts[index];
+                    final selected = _selectedContact?.id == contact.id;
                     return Reveal(
                       key: ValueKey(
                         '${people ? 'person' : 'chat'}-${contact.id}',
                       ),
                       child: Material(
-                        color: contact.unread > 0 && !people
+                        color: selected
+                            ? colors.primaryContainer.withValues(alpha: .5)
+                            : contact.unread > 0 && !people
                             ? colors.primaryContainer.withValues(alpha: .24)
                             : Colors.transparent,
                         borderRadius: BorderRadius.circular(22),
@@ -313,7 +355,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
                                     fontSize: 15,
-                                    fontWeight: contact.unread > 0
+                                    fontWeight: contact.unread > 0 || selected
                                         ? FontWeight.w800
                                         : FontWeight.w600,
                                   ),
@@ -349,8 +391,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                   tooltip: contact.favorite
                                       ? 'Remove favorite'
                                       : 'Add favorite',
-                                  onPressed: () =>
-                                      widget.store.toggleFavorite(contact),
+                                  onPressed: () {
+                                    HapticFeedback.lightImpact();
+                                    widget.store.toggleFavorite(contact);
+                                  },
                                   icon: Icon(
                                     contact.favorite
                                         ? Icons.star_rounded

@@ -1,21 +1,36 @@
 import 'package:flutter/material.dart';
 
-abstract final class LoopTheme {
-  static const teal = Color(0xFF147D70);
-  static const ink = Color(0xFF173C37);
-  static ThemeData get light => _build(Brightness.light);
-  static ThemeData get dark => _build(Brightness.dark);
+enum AppThemeColor {
+  teal('Teal', Color(0xFF147D70)),
+  indigo('Indigo', Color(0xFF3F51B5)),
+  rose('Rose', Color(0xFFE91E63)),
+  amber('Amber', Color(0xFFD97706)),
+  emerald('Emerald', Color(0xFF16A34A));
 
-  static ThemeData _build(Brightness brightness) {
-    final dark = brightness == Brightness.dark;
+  const AppThemeColor(this.label, this.color);
+  final String label;
+  final Color color;
+}
+
+abstract final class LoopTheme {
+  static const ink = Color(0xFF173C37);
+
+  static ThemeData light([AppThemeColor accent = AppThemeColor.teal]) =>
+      _build(Brightness.light, accent);
+
+  static ThemeData dark([AppThemeColor accent = AppThemeColor.teal]) =>
+      _build(Brightness.dark, accent);
+
+  static ThemeData _build(Brightness brightness, AppThemeColor accent) {
+    final isDark = brightness == Brightness.dark;
     final scheme = ColorScheme.fromSeed(
-      seedColor: teal,
+      seedColor: accent.color,
       brightness: brightness,
     );
     return ThemeData(
       useMaterial3: true,
       colorScheme: scheme,
-      scaffoldBackgroundColor: dark
+      scaffoldBackgroundColor: isDark
           ? const Color(0xFF111E1C)
           : const Color(0xFFF7F9F7),
       appBarTheme: const AppBarTheme(
@@ -25,7 +40,7 @@ abstract final class LoopTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: dark ? const Color(0xFF20312E) : Colors.white,
+        fillColor: isDark ? const Color(0xFF20312E) : Colors.white,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 20,
           vertical: 16,
@@ -52,8 +67,8 @@ abstract final class LoopTheme {
         ),
       ),
       textTheme: ThemeData(brightness: brightness).textTheme.apply(
-        bodyColor: dark ? const Color(0xFFECF4F0) : ink,
-        displayColor: dark ? const Color(0xFFECF4F0) : ink,
+        bodyColor: isDark ? const Color(0xFFECF4F0) : ink,
+        displayColor: isDark ? const Color(0xFFECF4F0) : ink,
       ),
       dividerTheme: DividerThemeData(
         color: scheme.outlineVariant.withValues(alpha: .45),
