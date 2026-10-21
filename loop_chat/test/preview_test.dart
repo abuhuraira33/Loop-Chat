@@ -6,8 +6,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:loop_chat/app.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  setUp(() {
+    SharedPreferences.setMockInitialValues({'is_logged_in': true});
+  });
+
   testWidgets('capture mobile and desktop previews', (tester) async {
     if (!const bool.fromEnvironment('CAPTURE_PREVIEWS')) return;
     debugDisableShadows = false;

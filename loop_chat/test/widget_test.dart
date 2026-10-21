@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:loop_chat/app.dart';
+import 'package:loop_chat/demo_store.dart';
+import 'package:loop_chat/screens/auth_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 Future<void> openApp(
@@ -20,7 +22,52 @@ Future<void> openApp(
 
 void main() {
   setUp(() {
-    SharedPreferences.setMockInitialValues({});
+    SharedPreferences.setMockInitialValues({'is_logged_in': true});
+  });
+
+  testWidgets('phone auth validation errors and login', (tester) async {
+    final store = DemoStore();
+    addTearDown(store.dispose);
+    await tester.pumpWidget(
+      MaterialApp(home: AuthScreen(store: store)),
+    );
+    await tester.pumpAndSettle();
+
+    // Tap generate OTP with empty field -> error
+    await tester.tap(find.byKey(const Key('generate-otp')));
+    await tester.pumpAndSettle();
+    expect(find.text('Please enter your phone number.'), findsOneWidget);
+
+    // Enter wrong digit count -> error
+    await tester.enterText(find.byKey(const Key('phone-input')), '12345');
+    await tester.tap(find.byKey(const Key('generate-otp')));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Must be exactly 11 digits for Pakistan.'),
+      findsOneWidget,
+    );
+
+    // Enter valid 11 digit Pakistan phone number
+    await tester.enterText(find.byKey(const Key('phone-input')), '03001234567');
+    await tester.tap(find.byKey(const Key('generate-otp')));
+    await tester.pumpAndSettle();
+
+    // Step 2 OTP verification screen
+    expect(find.text('Verify phone number'), findsOneWidget);
+
+    // Tap verify OTP with empty OTP -> error
+    await tester.tap(find.byKey(const Key('verify-otp')));
+    await tester.pumpAndSettle();
+    expect(find.text('Please enter the OTP code.'), findsOneWidget);
+
+    // Enter OTP and verify
+    await tester.enterText(find.byKey(const Key('otp-input')), '123456');
+    await tester.tap(find.byKey(const Key('verify-otp')));
+    await tester.pumpAndSettle();
+
+    expect(store.isLoggedIn, isTrue);
+    expect(store.phoneNumber, '03001234567');
+    expect(store.countryCode, '+92');
   });
 
   testWidgets('welcome, search, empty search, send and back', (tester) async {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'demo_store.dart';
 import 'theme.dart';
+import 'screens/auth_screen.dart';
 import 'screens/welcome_screen.dart';
 
 class LoopChatApp extends StatefulWidget {
@@ -28,7 +29,9 @@ class _LoopChatAppState extends State<LoopChatApp> {
       theme: LoopTheme.light(store.accentColor),
       darkTheme: LoopTheme.dark(store.accentColor),
       themeMode: store.themeMode,
-      home: WelcomeScreen(store: store),
+      home: store.isLoggedIn
+          ? WelcomeScreen(store: store)
+          : AuthScreen(store: store),
     ),
   );
 }

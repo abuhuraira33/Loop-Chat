@@ -113,17 +113,20 @@ class WelcomeScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 18),
-                  const Center(
-                    child: Text(
-                      'OFFLINE DEMO  •  NO SIGN-IN NEEDED',
-                      style: TextStyle(
-                        fontSize: 10,
-                        letterSpacing: 1.4,
-                        fontWeight: FontWeight.w600,
+                  if (store.phoneNumber.isNotEmpty) ...[
+                    const SizedBox(height: 18),
+                    Center(
+                      child: Text(
+                        'VERIFIED SESSION  •  ${store.countryCode} ${store.phoneNumber}',
+                        style: TextStyle(
+                          fontSize: 10,
+                          letterSpacing: 1.4,
+                          fontWeight: FontWeight.w600,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),

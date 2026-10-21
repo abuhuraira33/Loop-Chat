@@ -287,7 +287,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    'Offline demo · ${widget.store.simulateReplies ? 'Replies are simulated' : 'Auto replies are off'}',
+                    'Verified session · ${widget.store.simulateReplies ? 'Replies are simulated' : 'Auto replies are off'}',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 11,

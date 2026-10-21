@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../demo_store.dart';
 import '../theme.dart';
 import '../widgets/shared.dart';
+import 'auth_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key, required this.store});
@@ -14,6 +15,14 @@ class SettingsScreen extends StatelessWidget {
       builder: (context) => _ProfileEditor(name: store.name, bio: store.bio),
     );
     if (result != null) store.updateProfile(result.$1, result.$2);
+  }
+
+  void _logout(BuildContext context) {
+    HapticFeedback.lightImpact();
+    store.logout();
+    Navigator.of(
+      context,
+    ).pushAndRemoveUntil(loopRoute(AuthScreen(store: store)), (route) => false);
   }
 
   Future<void> _reset(BuildContext context) async {
@@ -82,11 +91,36 @@ class SettingsScreen extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               Text(store.bio, textAlign: TextAlign.center),
+              if (store.phoneNumber.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Chip(
+                  avatar: const Icon(Icons.phone_rounded, size: 14),
+                  label: Text('${store.countryCode} ${store.phoneNumber}'),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ],
               const SizedBox(height: 16),
-              OutlinedButton.icon(
-                onPressed: () => _editProfile(context),
-                icon: const Icon(Icons.edit_outlined, size: 16),
-                label: const Text('Edit profile'),
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 12,
+                runSpacing: 8,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: () => _editProfile(context),
+                    icon: const Icon(Icons.edit_outlined, size: 16),
+                    label: const Text('Edit profile'),
+                  ),
+                  if (store.isLoggedIn)
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.red,
+                        side: const BorderSide(color: Colors.red),
+                      ),
+                      onPressed: () => _logout(context),
+                      icon: const Icon(Icons.logout_rounded, size: 16),
+                      label: const Text('Sign out'),
+                    ),
+                ],
               ),
             ],
           ),
@@ -172,6 +206,16 @@ class SettingsScreen extends StatelessWidget {
           trailing: const Icon(Icons.chevron_right_rounded),
           onTap: () => _reset(context),
         ),
+        if (store.isLoggedIn) ...[
+          const Divider(),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.logout_rounded, color: Colors.red),
+            title: const Text('Sign out', style: TextStyle(color: Colors.red)),
+            subtitle: const Text('Sign out of your phone session.'),
+            onTap: () => _logout(context),
+          ),
+        ],
         const SizedBox(height: 30),
         Container(
           padding: const EdgeInsets.all(20),

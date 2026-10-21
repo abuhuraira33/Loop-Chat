@@ -52,12 +52,16 @@ class Contact {
   final List<Message> messages = [];
 }
 
-/// All state managed locally with optional SharedPreferences persistence.
+/// All state managed locally with SharedPreferences persistence.
 class DemoStore extends ChangeNotifier {
   DemoStore() {
     _seed();
     _loadFromPrefs();
   }
+
+  bool isLoggedIn = false;
+  String phoneNumber = '';
+  String countryCode = '';
 
   ThemeMode themeMode = ThemeMode.system;
   AppThemeColor accentColor = AppThemeColor.teal;
@@ -167,6 +171,10 @@ class DemoStore extends ChangeNotifier {
   Future<void> _loadFromPrefs() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      isLoggedIn = prefs.getBool('is_logged_in') ?? false;
+      phoneNumber = prefs.getString('phone_number') ?? '';
+      countryCode = prefs.getString('country_code') ?? '';
+
       final modeIndex = prefs.getInt('theme_mode');
       if (modeIndex != null &&
           modeIndex >= 0 &&
@@ -209,6 +217,9 @@ class DemoStore extends ChangeNotifier {
   Future<void> _saveToPrefs() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('is_logged_in', isLoggedIn);
+      await prefs.setString('phone_number', phoneNumber);
+      await prefs.setString('country_code', countryCode);
       await prefs.setInt('theme_mode', themeMode.index);
       await prefs.setInt('accent_color', accentColor.index);
       await prefs.setBool('simulate_replies', simulateReplies);
@@ -223,6 +234,22 @@ class DemoStore extends ChangeNotifier {
         await prefs.setString('messages_${c.id}', encoded);
       }
     } catch (_) {}
+  }
+
+  void login(String number, String code) {
+    isLoggedIn = true;
+    phoneNumber = number;
+    countryCode = code;
+    _saveToPrefs();
+    notifyListeners();
+  }
+
+  void logout() {
+    isLoggedIn = false;
+    phoneNumber = '';
+    countryCode = '';
+    _saveToPrefs();
+    notifyListeners();
   }
 
   void openChat(Contact contact) {
